@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    environment {
+        // Replace with your credentials and repository info
+        SSH_KEY = credentials('private_key_for_jboss')
+        JBoss_SERVER = 'ubuntu@35.172.182.127' // Replace with your JBoss server IP or hostname
+        GIT_REPO = 'https://github.com/Chandanibps/remoterepo.git' // Replace with your repository URL
+        BRANCH_NAME = 'master' // Replace with your branch name
+        DEPLOYMENT_PATH = '/jboss-eap-7.4/standalone/deployments/' // JBoss deployment folder
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    // Checkout code from GitHub
+                    git branch: "${BRANCH_NAME}", url: "${GIT_REPO}"
+                }
+            }
+        }
+
+     
+
+        stage('Deploy to JBoss') {
+            steps {
+                script {
+                    // Ensure that the target deployment directory exists
+                    // Use sudo to ensure you have the necessary privileges
+                    sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${JBoss_SERVER} 'sudo mkdir -p ${DEPLOYMENT_PATH}'"
+                    
+                    // Now deploy the .jar file to the JBoss deployments directory
+                    // Copy the .jar to JBoss deployments folder
+                    sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${WORKSPACE}/maven-wrapper.jar ${JBoss_SERVER}:${DEPLOYMENT_PATH}"
+
+                    // Optional: Restart JBoss server to pick up the new deployment
+                    // This assumes that you want to restart JBoss after deployment
+                   
+                }
+            }
+        }
+
+       /// stage('Start JBoss Server') {
+           // steps {
+               // script {
+                    // Ensure that the JBoss server is running
+                   // sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${JBoss_SERVER} 'sudo systemctl start jboss-eap-7.4'"
+              //  }
+          //  }
+       // }
+    }
+
+    post {
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed!'
+        }
+    }
+}
